@@ -1,0 +1,30 @@
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+
+# Build files
+target/
+bin/
+out/
+
+# Maven project files
+*.log
+*.tmp
+*.bak
+
+# Java specific files
+*.class
+*.jar
+*.war
+
+# IntelliJ IDEA specific files
+*.iml
+
+# Maven POM backup files
+pom.xml~
+
+# Other files
+*.swp
