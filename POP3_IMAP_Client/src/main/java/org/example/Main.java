@@ -1,42 +1,71 @@
 package org.example;
 
 import java.io.IOException;
+import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
         try {
+            Scanner scanner = new Scanner(System.in);
+
             // Create a new MailClient instance (connect to SMTP/POP3 server)
-            MailClient mailClient = new MailClient("smtp.example.com", 25);  // Use SMTP server and port
+            MailClient pop3MailClient = new MailClient("localhost", 110);  // Use SMTP server and port
+            MailClient smtpMailClient = new MailClient("localhost", 25);  // Use SMTP server and port
 
-            // Login to the mail server
-            boolean isLoggedIn = mailClient.login("user@example.com", "AdminPassword123");
-            if (isLoggedIn) {
-                System.out.println("Logged in successfully.");
+            System.out.println("Successfully connected to server.");
 
-                // List available emails (use POP3)
-                String emailList = mailClient.listEmails();
-                System.out.println("Email List:\n" + emailList);
+            int command = -1;
+            while (true) {
 
-                // Fetch a specific email by its ID (e.g., email ID 1)
-                String emailContent = mailClient.fetchEmail(1);
-                System.out.println("Fetched Email Content:\n" + emailContent);
+                boolean loggedIn = false;
+                while (!loggedIn)  {
+                    System.out.print("Enter your username: ");
+                    String username = scanner.nextLine();
+                    System.out.print("Enter your password: ");
+                    String password = scanner.nextLine();
 
-                // Send an email (use SMTP)
-                boolean isSent = mailClient.sendEmail("user@example.com", "recipient@example.com", "Subject", "Hello, this is a test email.");
-                if (isSent) {
-                    System.out.println("Email sent successfully.");
-                } else {
-                    System.out.println("Failed to send email.");
+                    loggedIn = pop3MailClient.login(username, password);
                 }
 
-            } else {
-                System.out.println("Login failed.");
-            }
+                printSuccess("Successfully logged in!");
 
-            // Close the connection
-            mailClient.close();
+                while (command != 4) {
+                    System.out.println("Commands:");
+                    System.out.println("1. View Inbox");
+                    System.out.println("2. Retrieve a specific mail by ID");
+                    System.out.println("3. Send a mail");
+                    System.out.println("4. Logout");
+
+                    command = scanner.nextInt();
+
+                    switch (command) {
+                        case 1:
+                            smtpMailClient.listEmails();
+                            break;
+                        case 2:
+                            System.out.println("Email id: ");
+                            int emailId = scanner.nextInt();
+                            smtpMailClient.fetchEmail(emailId);
+                            break;
+                        case 3:
+                            System.out.println("TODO");
+                            break;
+                        case 4:
+                            System.out.println("Logged out successfully!");
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    private static void printSuccess(String msg) {
+        final String GREEN = "\033[0;32m";
+        final String RESET = "\033[0m";
+        System.out.println(GREEN + msg  + RESET);
     }
 }

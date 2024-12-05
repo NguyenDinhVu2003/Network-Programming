@@ -27,6 +27,9 @@ public class MailClient {
         socket = new Socket(server, port);
         reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
+
+        String serverGreeting = reader.readLine();
+        System.out.println(serverGreeting);
     }
 
     /**
@@ -73,10 +76,19 @@ public class MailClient {
      */
     public boolean login(String username, String password) throws IOException {
         String response = sendCommand("USER " + username);
-        if (!response.startsWith("+OK")) return false;
+        // System.out.println(response);
+        if (!response.startsWith("+OK")) {
+            printError(response);
+            return false;
+        }
 
         response = sendCommand("PASS " + password);
-        return response.startsWith("+OK");
+        // System.out.println(response);
+        boolean loggedIn = response.startsWith("+OK");
+        if (!loggedIn) {
+            printError(response);
+        }
+        return loggedIn;
     }
 
     /**
@@ -157,5 +169,12 @@ public class MailClient {
         writer.flush();
         String response = reader.readLine();
         return response.startsWith("250");
+    }
+
+    private static void printError(String error) {
+        final String RED = "\033[0;31m";
+        final String RESET = "\033[0m";  // Reset color to default
+        System.out.println(RED + error + RESET);  // Print response in red color
+
     }
 }
