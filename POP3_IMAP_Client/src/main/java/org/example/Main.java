@@ -1,5 +1,6 @@
 package org.example;
 
+import java.io.Console;
 import java.io.IOException;
 import java.util.Scanner;
 
@@ -14,22 +15,28 @@ public class Main {
 
             System.out.println("Successfully connected to server.");
 
-            int command = -1;
-            while (true) {
 
                 String userMail = null;
                 boolean loggedIn = false;
                 while (!loggedIn)  {
                     System.out.print("Enter your username: ");
                     userMail = scanner.nextLine();
-                    System.out.print("Enter your password: ");
-                    String password = scanner.nextLine();
+
+                    // Get the system's console to read password without displaying it
+                    Console console = System.console();
+                    if (console == null) {
+                        System.out.println("No console available");
+                        return;
+                    }
+                    char[] passwordArray = console.readPassword("Enter your password: ");
+                    String password = new String(passwordArray);
 
                     loggedIn = pop3MailClient.login(userMail, password);
                 }
 
                 printSuccess("Successfully logged in!");
 
+                int command = -1;
                 while (command != 4) {
                     System.out.println("Commands:");
                     System.out.println("1. View Inbox");
@@ -37,39 +44,54 @@ public class Main {
                     System.out.println("3. Send a mail");
                     System.out.println("4. Logout");
 
+
                     command = scanner.nextInt();
                     // consume new line
                     scanner.nextLine();
 
                     switch (command) {
                         case 1:
-                            String emails = smtpMailClient.listEmails();
-                            System.out.println(emails);
+                            String emails = pop3MailClient.listEmails();
+                            if (emails.isEmpty()) {
+                                System.out.println("No emails to display");
+                            } else {
+                                System.out.println(emails);
+                            }     
                             break;
                         case 2:
-                            System.out.println("Email id: ");
+                            System.out.print("Email id: ");
                             int emailId = scanner.nextInt();
-                            String mail = smtpMailClient.fetchEmail(emailId);
-                            System.out.println(mail);
+                            String email = pop3MailClient.fetchEmail(emailId);
+                            if (email.isEmpty()) {
+                               printError("Email with id does not exist");
+                            } else {
+                                System.out.println(email);
+                            }
                             break;
                         case 3:
-                            System.out.print("Enter destination:");
+                            System.out.print("Enter destination: ");
                             String destination = scanner.nextLine();
-                            System.out.print("Enter subject:");
+                            System.out.print("Enter subject: ");
                             String subject = scanner.nextLine();
-                            System.out.print("Enter body:");
+                            System.out.println("Enter body: ");
                             String body = scanner.nextLine();
                             boolean success = smtpMailClient.sendEmail(userMail, destination, subject, body);
-                            System.out.println(success);
+                            if (success) {
+                                printSuccess("Email sent successfully");
+                            } else {
+                                printError("Something went wrong");
+                            }
                             break;
                         case 4:
-                            System.out.println("Logged out successfully!");
+                            pop3MailClient.logout();
                             break;
                         default:
                             break;
                     }
                 }
-            }
+            scanner.close();
+            smtpMailClient.close();
+            pop3MailClient.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -80,4 +102,11 @@ public class Main {
         final String RESET = "\033[0m";
         System.out.println(GREEN + msg  + RESET);
     }
+
+    private static void printError(String error) {
+        final String RED = "\033[0;31m";
+        final String RESET = "\033[0m";
+        System.out.println(RED + error + RESET);
+    }
+
 }

@@ -2,6 +2,8 @@ package org.example;
 
 import java.io.*;
 import java.net.*;
+import java.nio.file.Files;
+import java.util.Base64;
 
 public class MailClient {
     // This socket facilitates communication between the client and the server.
@@ -106,17 +108,28 @@ public class MailClient {
      * @throws IOException if there is an issue with server communication
      */
     public String listEmails() throws IOException {
-        StringBuilder emails = new StringBuilder();
+        StringBuilder emailTable = new StringBuilder();
+        emailTable.append(String.format("%-10s %-10s\n", "Email ID", "Size (bytes)"));  // Table headers
+    
         String response = sendCommand("LIST");
-
+    
         if (response.startsWith("+OK")) {
             String line;
             while (!(line = reader.readLine()).equals(".")) {
-                emails.append(line).append("\n");
+                String[] parts = line.split("\\s+");  // Split on whitespace (spaces or tabs)
+                if (parts.length == 2) {
+                    String emailId = parts[0];
+                    String size = parts[1];
+    
+                    // Format each email ID and size into a row in the table
+                    emailTable.append(String.format("%-10s %-10s\n", emailId, size));
+                }
             }
         }
-        return emails.toString();
+    
+        return emailTable.toString();
     }
+    
 
     /**
      * Fetches the full content of a specific email from the server using its ID.
@@ -158,16 +171,94 @@ public class MailClient {
      * @throws IOException if there is an issue with the server communication
      */
     public boolean sendEmail(String from, String to, String subject, String body) throws IOException {
+        sendCommand("EHLO localhost");  // Greet the server
+        sendCommand("MAIL FROM:<" + from + ">");  // Sender email address
+        sendCommand("RCPT TO:<" + to + ">");  // Recipient email address
+        sendCommand("DATA");  // Start composing the email
+    
+        // Write email headers
+        writer.write("From: " + from + "\r\n");
+        writer.write("To: " + to + "\r\n");
+        writer.write("Subject: " + subject + "\r\n");
+        writer.write("Date: " + java.time.Instant.now().toString() + "\r\n");  // Optional but useful
+        writer.write("\r\n");  // Blank line separating headers and body
+    
+        // Write email body
+        writer.write(body + "\r\n");
+    
+        // End of the email data
+        writer.write(".\r\n");  // Indicate the end of the email message
+    
+        writer.flush();  // Ensure the data is sent
+    
+        // Read the server's response to ensure the message was accepted
+        String response = reader.readLine();
+        return response.startsWith("250");  // SMTP response code 250 means success
+    }
+
+    public void logout() throws IOException {
+        String response = sendCommand("QUIT");
+    }
+    
+
+ public boolean sendEmailWithAttachment(String from, String to, String subject, String body, String attachmentPath) throws IOException {
+        // Tạo boundary cho MIME
+        String boundary = "----=_Part_" + System.currentTimeMillis();
+
+        // Gửi lệnh EHLO để bắt đầu phiên SMTP
         sendCommand("EHLO localhost");
+
+        // Gửi lệnh MAIL FROM
         sendCommand("MAIL FROM:<" + from + ">");
+
+        // Gửi lệnh RCPT TO
         sendCommand("RCPT TO:<" + to + ">");
+
+        // Bắt đầu phần dữ liệu email
         sendCommand("DATA");
+
+        // Tạo phần đầu email (bao gồm Subject và MIME header)
+        writer.write("Content-Type: multipart/mixed; boundary=\"" + boundary + "\"\r\n");
         writer.write("Subject: " + subject + "\r\n");
         writer.write("\r\n");
+
+        // Phần body văn bản của email
+        writer.write("--" + boundary + "\r\n");
+        writer.write("Content-Type: text/plain; charset=\"UTF-8\"\r\n");
+        writer.write("\r\n");
         writer.write(body + "\r\n");
-        writer.write(".\r\n");
+        writer.write("\r\n");
+
+        // Bắt đầu phần đính kèm
+        File attachment = new File(attachmentPath);
+        if (attachment.exists()) {
+            // Đọc tệp đính kèm và mã hóa thành Base64
+            byte[] fileBytes = Files.readAllBytes(attachment.toPath());
+            String encodedFile = Base64.getEncoder().encodeToString(fileBytes);
+
+            // Phần MIME cho tệp đính kèm
+            writer.write("--" + boundary + "\r\n");
+            writer.write("Content-Type: application/octet-stream; name=\"" + attachment.getName() + "\"\r\n");
+            writer.write("Content-Transfer-Encoding: base64\r\n");
+            writer.write("Content-Disposition: attachment; filename=\"" + attachment.getName() + "\"\r\n");
+            writer.write("\r\n");
+
+            // Gửi tệp đính kèm đã mã hóa
+            writer.write(encodedFile);
+            writer.write("\r\n");
+        }
+
+        // Kết thúc phần đính kèm và email
+        writer.write("--" + boundary + "--\r\n");  // Đánh dấu kết thúc các phần MIME
+        writer.write(".\r\n");  // Kết thúc dữ liệu email
+
+        // Đảm bảo dữ liệu đã được gửi đi
         writer.flush();
+
+        // Đọc phản hồi từ máy chủ SMTP
         String response = reader.readLine();
+
+        // Nếu phản hồi là 250, thì gửi email thành công
         return response.startsWith("250");
     }
 
@@ -175,6 +266,5 @@ public class MailClient {
         final String RED = "\033[0;31m";
         final String RESET = "\033[0m";  // Reset color to default
         System.out.println(RED + error + RESET);  // Print response in red color
-
     }
 }
