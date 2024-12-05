@@ -200,8 +200,8 @@ public class MailClient {
         String response = sendCommand("QUIT");
     }
     
-
- public boolean sendEmailWithAttachment(String from, String to, String subject, String body, String attachmentPath) throws IOException {
+     // Phương thức gửi email có tệp đính kèm
+     public boolean sendEmailWithAttachment(String from, String to, String subject, String body, String attachmentPath) throws IOException {
         // Tạo boundary cho MIME
         String boundary = "----=_Part_" + System.currentTimeMillis();
 
