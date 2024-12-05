@@ -17,14 +17,15 @@ public class Main {
             int command = -1;
             while (true) {
 
+                String userMail = null;
                 boolean loggedIn = false;
                 while (!loggedIn)  {
                     System.out.print("Enter your username: ");
-                    String username = scanner.nextLine();
+                    userMail = scanner.nextLine();
                     System.out.print("Enter your password: ");
                     String password = scanner.nextLine();
 
-                    loggedIn = pop3MailClient.login(username, password);
+                    loggedIn = pop3MailClient.login(userMail, password);
                 }
 
                 printSuccess("Successfully logged in!");
@@ -37,18 +38,29 @@ public class Main {
                     System.out.println("4. Logout");
 
                     command = scanner.nextInt();
+                    // consume new line
+                    scanner.nextLine();
 
                     switch (command) {
                         case 1:
-                            smtpMailClient.listEmails();
+                            String emails = smtpMailClient.listEmails();
+                            System.out.println(emails);
                             break;
                         case 2:
                             System.out.println("Email id: ");
                             int emailId = scanner.nextInt();
-                            smtpMailClient.fetchEmail(emailId);
+                            String mail = smtpMailClient.fetchEmail(emailId);
+                            System.out.println(mail);
                             break;
                         case 3:
-                            System.out.println("TODO");
+                            System.out.print("Enter destination:");
+                            String destination = scanner.nextLine();
+                            System.out.print("Enter subject:");
+                            String subject = scanner.nextLine();
+                            System.out.print("Enter body:");
+                            String body = scanner.nextLine();
+                            boolean success = smtpMailClient.sendEmail(userMail, destination, subject, body);
+                            System.out.println(success);
                             break;
                         case 4:
                             System.out.println("Logged out successfully!");
