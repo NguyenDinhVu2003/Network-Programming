@@ -75,14 +75,12 @@ public class Main {
                         String body = scanner.nextLine();
                         System.out.print("Do you want to add an attachement (y/n): ");
                         String att = scanner.nextLine();
-                        boolean success = false;
+                        String path = "";
                         if (att.equals("y")) {
                             System.out.print("Enter the path of the file: ");
-                            String path = scanner.nextLine();
-                            success = smtpMailClient.sendEmailWithAttachment(userMail, destination, subject, body, path);
-                        } else {
-                            success = smtpMailClient.sendEmail(userMail, destination, subject, body);
+                            path = scanner.nextLine();
                         }
+                        boolean success = smtpMailClient.sendEmailWithAttachment(userMail, destination, subject, body, path);
                         if (success) {
                             printSuccess("Email sent successfully");
                         } else {

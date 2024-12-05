@@ -154,112 +154,86 @@ public class MailClient {
         }
         return emailContent.toString();
     }
-
-    /**
-     * Sends an email to the specified recipient using the SMTP protocol.
-     *
-     * This method establishes a communication sequence with the SMTP server to send an email.
-     * It uses the "MAIL FROM", "RCPT TO", and "DATA" commands to define the sender, recipient,
-     * and email content (including the subject and body). The email content is terminated
-     * by a single period (".") on a line, as per SMTP protocol requirements.
-     *
-     * @param from the sender's email address (e.g., "sender@example.com")
-     * @param to the recipient's email address (e.g., "recipient@example.com")
-     * @param subject the subject of the email
-     * @param body the body content of the email
-     * @return true if the email was successfully sent (server responds with code 250), false otherwise
-     * @throws IOException if there is an issue with the server communication
-     */
-    public boolean sendEmail(String from, String to, String subject, String body) throws IOException {
-        sendCommand("EHLO localhost");  // Greet the server
-        sendCommand("MAIL FROM:<" + from + ">");  // Sender email address
-        sendCommand("RCPT TO:<" + to + ">");  // Recipient email address
-        sendCommand("DATA");  // Start composing the email
-    
-        // Write email headers
-        writer.write("From: " + from + "\r\n");
-        writer.write("To: " + to + "\r\n");
-        writer.write("Subject: " + subject + "\r\n");
-        writer.write("Date: " + java.time.Instant.now().toString() + "\r\n");  // Optional but useful
-        writer.write("\r\n");  // Blank line separating headers and body
-    
-        // Write email body
-        writer.write(body + "\r\n");
-    
-        // End of the email data
-        writer.write(".\r\n");  // Indicate the end of the email message
-    
-        writer.flush();  // Ensure the data is sent
-    
-        // Read the server's response to ensure the message was accepted
-        String response = reader.readLine();
-        return response.startsWith("250");  // SMTP response code 250 means success
-    }
-
-    public void logout() throws IOException {
-        String response = sendCommand("QUIT");
-    }
-    
-     // Phương thức gửi email có tệp đính kèm
-     public boolean sendEmailWithAttachment(String from, String to, String subject, String body, String attachmentPath) throws IOException {
+ 
+    public boolean sendEmailWithAttachment(String from, String to, String subject, String body, String attachmentPath) throws IOException {
         // Tạo boundary cho MIME
         String boundary = "----=_Part_" + System.currentTimeMillis();
 
-        // Gửi lệnh EHLO để bắt đầu phiên SMTP
         sendCommand("EHLO localhost");
+    
+        // Now, read all the lines in the EHLO response
+        String line;
+        while ((line = reader.readLine()) != null && !line.startsWith("250 ")) {
+            //System.out.println(line); // Optionally print the response
+        }
 
         // Gửi lệnh MAIL FROM
-        sendCommand("MAIL FROM:<" + from + ">");
+        String response = sendCommand("MAIL FROM:<" + from + ">");
+        //System.out.println(response);
 
-        // Gửi lệnh RCPT TO
-        sendCommand("RCPT TO:<" + to + ">");
+        response = sendCommand("RCPT TO:<" + to + ">");
+        //System.out.println(response);
 
-        // Bắt đầu phần dữ liệu email
-        sendCommand("DATA");
+        response = sendCommand("DATA");
+        //System.out.println(response); // Expecting "354 OK, send"
 
-        // Tạo phần đầu email (bao gồm Subject và MIME header)
+        // Write email headers
         writer.write("Content-Type: multipart/mixed; boundary=\"" + boundary + "\"\r\n");
+        writer.write("From: " + from + "\r\n");
+        writer.write("To: " + to + "\r\n");
         writer.write("Subject: " + subject + "\r\n");
-        writer.write("\r\n");
+        writer.write("Date: " + java.time.Instant.now().toString() + "\r\n");
+        writer.write("\r\n"); // Empty line separating headers from body
 
-        // Phần body văn bản của email
+         // Write the body of the email
         writer.write("--" + boundary + "\r\n");
         writer.write("Content-Type: text/plain; charset=\"UTF-8\"\r\n");
         writer.write("\r\n");
         writer.write(body + "\r\n");
         writer.write("\r\n");
 
-        // Bắt đầu phần đính kèm
-        File attachment = new File(attachmentPath);
-        if (attachment.exists()) {
-            // Đọc tệp đính kèm và mã hóa thành Base64
-            byte[] fileBytes = Files.readAllBytes(attachment.toPath());
-            String encodedFile = Base64.getEncoder().encodeToString(fileBytes);
+        // If there's an attachment, handle it
+        if (attachmentPath != null && !attachmentPath.isEmpty()) {
+            File attachment = new File(attachmentPath);
+            if (attachment.exists()) {
+                byte[] fileBytes = Files.readAllBytes(attachment.toPath());
+                String encodedFile = Base64.getEncoder().encodeToString(fileBytes);
 
-            // Phần MIME cho tệp đính kèm
-            writer.write("--" + boundary + "\r\n");
-            writer.write("Content-Type: application/octet-stream; name=\"" + attachment.getName() + "\"\r\n");
-            writer.write("Content-Transfer-Encoding: base64\r\n");
-            writer.write("Content-Disposition: attachment; filename=\"" + attachment.getName() + "\"\r\n");
-            writer.write("\r\n");
-
-            // Gửi tệp đính kèm đã mã hóa
-            writer.write(encodedFile);
-            writer.write("\r\n");
+                // Add attachment part
+                writer.write("--" + boundary + "\r\n");
+                writer.write("Content-Type: application/octet-stream; name=\"" + attachment.getName() + "\"\r\n");
+                writer.write("Content-Transfer-Encoding: base64\r\n");
+                writer.write("Content-Disposition: attachment; filename=\"" + attachment.getName() + "\"\r\n");
+                writer.write("\r\n");
+                
+                // Write Base64 encoded file content
+                int chunkSize = 76; // SMTP requires chunks of 76 characters
+                
+                for (int i = 0; i < encodedFile.length(); i += chunkSize) {
+                    writer.write(encodedFile, i, Math.min(i + chunkSize, encodedFile.length()));
+                    writer.write("\r\n");
+                }
+                writer.write("\r\n");
+            } else {
+                throw new IOException("Attachment file not found: " + attachmentPath);
+            }
         }
-
-        // Kết thúc phần đính kèm và email
-        writer.write("--" + boundary + "--\r\n");  // Đánh dấu kết thúc các phần MIME
-        writer.write(".\r\n");  // Kết thúc dữ liệu email
-
-        // Đảm bảo dữ liệu đã được gửi đi
+        
+        // End the email content
+        writer.write("--" + boundary + "--\r\n");
+        writer.write(".\r\n");
+        
+        // Send the email content
         writer.flush();
+        
+        // Read the server response to ensure it was accepted
+        response = reader.readLine();
+        
+        return response.startsWith("250");  // Return true if email was accepted successfully
+    }
 
-        // Đọc phản hồi từ máy chủ SMTP
-        String response = reader.readLine();
-
-        // Nếu phản hồi là 250, thì gửi email thành công
-        return response.startsWith("250");
+    public void logout() throws IOException {
+        String response = sendCommand("QUIT");
     }
 
     private static void printError(String error) {
