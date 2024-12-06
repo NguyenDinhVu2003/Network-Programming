@@ -10,11 +10,10 @@ public class Main {
             Scanner scanner = new Scanner(System.in);
 
             // Create a new MailClient instance (connect to SMTP/POP3 server)
-            MailClient pop3MailClient = new MailClient("localhost", 110);  // Use SMTP server and port
-            MailClient smtpMailClient = new MailClient("localhost", 25);  // Use SMTP server and port
+            MailClient pop3MailClient = new MailClient("localhost", 110, "+OK");  // Use POP3 server and port
+            MailClient smtpMailClient = new MailClient("localhost", 25, "220");  // Use SMTP server and port
 
-            System.out.println("Successfully connected to server.");
-
+            printSuccess("Successfully connected to server.");
 
             String userMail = null;
             boolean loggedIn = false;
@@ -38,7 +37,7 @@ public class Main {
 
             int command = -1;
             while (command != 4) {
-                System.out.println("Commands:");
+                System.out.println("--- COMMANDS ---");
                 System.out.println("1. View Inbox");
                 System.out.println("2. Retrieve a specific mail by ID");
                 System.out.println("3. Send a mail");
@@ -49,6 +48,7 @@ public class Main {
 
                 switch (command) {
                     case 1:
+                        printLine(25);
                         String emails = pop3MailClient.listEmails();
                         if (emails.isEmpty()) {
                             System.out.println("No emails to display");
@@ -59,6 +59,8 @@ public class Main {
                     case 2:
                         System.out.print("Email id: ");
                         int emailId = scanner.nextInt();
+                        scanner.nextLine(); // consume newline
+                        printLine(25);
                         String email = pop3MailClient.fetchEmail(emailId);
                         if (email.isEmpty()) {
                             printError("Email with id does not exist");
@@ -117,4 +119,10 @@ public class Main {
         System.out.println(RED + error + RESET);
     }
 
+    private static void printLine(int count) {
+        for (int i = 0; i < count; i++) {
+            System.out.print("-");
+        }
+        System.out.println();
+    }
 }

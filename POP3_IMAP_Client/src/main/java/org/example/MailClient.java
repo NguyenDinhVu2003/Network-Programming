@@ -19,19 +19,18 @@ public class MailClient {
      * This constructor initializes a connection to the mail server using the given
      * hostname and port. Otherwise, it establishes a plain socket connection.
      * Additionally, it sets up input and output streams for communication with the server.
-     *
-     * @param server the hostname or IP address of the mail server (e.g., "pop3.example.com")
-     * @param port the port number to connect to
-     * @throws IOException if there is an error creating the socket or setting up streams
-     *
      */
-    public MailClient(String server, int port) throws IOException {
+    public MailClient(String server, int port, String response) throws IOException {
         socket = new Socket(server, port);
         reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
         writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
 
         String serverGreeting = reader.readLine();
-        System.out.println(serverGreeting);
+        if (serverGreeting.startsWith(response)) {
+            System.out.println(serverGreeting);
+        } else {
+            printError(serverGreeting);
+        }
     }
 
     /**
@@ -70,11 +69,8 @@ public class MailClient {
      * command followed by the password to the POP3 server. It checks the server's
      * response to determine if the login was successful.
      *
-     * @param username the username or email address used for authentication
-     * @param password the password associated with the username
      * @return true if the server confirms successful login (response starts with "+OK"),
      *         false otherwise
-     * @throws IOException if there is an issue with the server communication
      */
     public boolean login(String username, String password) throws IOException {
         String response = sendCommand("USER " + username);
@@ -232,13 +228,14 @@ public class MailClient {
         return response.startsWith("250");  // Return true if email was accepted successfully
     }
 
-    public void logout() throws IOException {
+    public String logout() throws IOException {
         String response = sendCommand("QUIT");
+        return response;
     }
 
     private static void printError(String error) {
         final String RED = "\033[0;31m";
-        final String RESET = "\033[0m";  // Reset color to default
-        System.out.println(RED + error + RESET);  // Print response in red color
+        final String RESET = "\033[0m";
+        System.out.println(RED + error + RESET);
     }
 }
