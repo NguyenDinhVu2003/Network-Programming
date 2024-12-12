@@ -126,7 +126,6 @@ public class MailClient {
         return emailTable.toString();
     }
     
-
     /**
      * Fetches the full content of a specific email from the server using its ID.
      *
@@ -138,7 +137,7 @@ public class MailClient {
      * @return a String containing the full raw content of the email, including headers and body
      * @throws IOException IOException if there is an issue with the server communication
      */
-    public String fetchEmail(int emailId) throws IOException {
+    public Mail fetchEmail(int emailId) throws IOException {
         StringBuilder emailContent = new StringBuilder();
         String response = sendCommand("RETR " + emailId);
 
@@ -148,7 +147,12 @@ public class MailClient {
                 emailContent.append(line).append("\n");
             }
         }
-        return emailContent.toString();
+        String emailString = emailContent.toString();
+        System.out.println(emailString);
+        if (emailString.isEmpty())
+            return null;
+        Mail formattedMail = new Mail(emailString);
+        return formattedMail;
     }
  
     public boolean sendEmailWithAttachment(String from, String to, String subject, String body, String attachmentPath) throws IOException {

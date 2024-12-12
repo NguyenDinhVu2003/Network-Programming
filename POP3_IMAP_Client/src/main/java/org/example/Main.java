@@ -61,11 +61,11 @@ public class Main {
                         int emailId = scanner.nextInt();
                         scanner.nextLine(); // consume newline
                         printLine(25);
-                        String email = pop3MailClient.fetchEmail(emailId);
-                        if (email.isEmpty()) {
+                        Mail email = pop3MailClient.fetchEmail(emailId);
+                        if (email == null) {
                             printError("Email with id does not exist");
                         } else {
-                            System.out.println(email);
+                            System.out.println(email.toString());
                         }
                         break;
                     case 3:
