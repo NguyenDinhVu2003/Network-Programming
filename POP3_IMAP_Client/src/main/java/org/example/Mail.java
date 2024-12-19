@@ -1,5 +1,6 @@
 package org.example;
 
+import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -92,15 +93,24 @@ public class Mail {
         return "";
     }
 
-    // Extract base64 encoded attachment
+
+
     private String extractAttachment(String part) {
-        Pattern pattern = Pattern.compile("Content-Transfer-Encoding: base64.*?\\r?\\n\\r?\\n(.*?)\\r?\\n--", Pattern.DOTALL);
-        Matcher matcher = pattern.matcher(part);
-        if (matcher.find()) {
-            String encodedAttachment = matcher.group(1).trim();
-            return decodeBase64(encodedAttachment);
+        Pattern namePattern = Pattern.compile("filename=\"([^\"]+)\"");
+        Matcher nameMatcher = namePattern.matcher(part);
+        String filename = null; // Default to null if not found
+        if (nameMatcher.find()) {
+            filename = nameMatcher.group(1).trim();
         }
-        return "";
+
+        Pattern contentPattern = Pattern.compile("Content-Transfer-Encoding: base64.*?\\r?\\n\\r?\\n(.*?)\\r?\\n--", Pattern.DOTALL);
+        Matcher contentMatcher = contentPattern.matcher(part);
+        if (contentMatcher.find() && filename != null) { // Only process if filename is found
+            String encodedAttachment = contentMatcher.group(1).trim();
+            String decodedContent = decodeBase64(encodedAttachment);
+            attachments.put(filename, decodedContent); // Save attachment with its filename
+        }
+        return filename;
     }
 
     // Decode base64 content to a human-readable string (assuming it’s text-based for simplicity)
@@ -151,6 +161,7 @@ public class Mail {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMMM dd, yyyy HH:mm:ss");
         String formattedDate = dateTime.format(formatter);
 
+
         sb.append("Date: ").append(formattedDate).append("\n");
         sb.append("\n" + textBody +"\n");
 
@@ -165,7 +176,7 @@ public class Mail {
 
     // Main method for testing
     public static void main(String[] args) {
-        String rawEmail = "Return-Path: daniel@example.com\n" +
+        /*String rawEmail = "Return-Path: daniel@example.com\n" +
                           "Received: from localhost (DESKTOP-BAQ9VDA [127.0.0.1])\n" +
                           "        by DESKTOP-BAQ9VDA with ESMTP\n" +
                           "        ; Wed, 4 Dec 2024 21:19:38 -0800\n" +
@@ -187,7 +198,10 @@ public class Mail {
                           "------=_Part_1733375978497--";
 
         Mail email = new Mail(rawEmail);
-        System.out.println(email);
+        System.out.println(email);*/
+     /*   File file = new File("");
+        System.out.println("File exists: " + file.exists());*/
+
     }
 }
 

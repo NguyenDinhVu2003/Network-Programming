@@ -137,24 +137,45 @@ public class MailClient {
      * @return a String containing the full raw content of the email, including headers and body
      * @throws IOException IOException if there is an issue with the server communication
      */
+
     public Mail fetchEmail(int emailId) throws IOException {
         StringBuilder emailContent = new StringBuilder();
         String response = sendCommand("RETR " + emailId);
 
-        if (response.startsWith("+OK")) {
-            String line;
-            while (!(line = reader.readLine()).equals(".")) {
-                emailContent.append(line).append("\n");
-            }
-        }
-        String emailString = emailContent.toString();
-        System.out.println(emailString);
-        if (emailString.isEmpty())
+        // Kiểm tra phản hồi từ máy chủ
+        if (!response.startsWith("+OK")) {
+            System.out.println("Failed to fetch email with ID: " + emailId);
             return null;
-        Mail formattedMail = new Mail(emailString);
-        return formattedMail;
+        }
+
+        // Đọc nội dung email
+        String line;
+        while ((line = reader.readLine()) != null) {
+            if (line.equals(".")) { // Dòng kết thúc
+                break;
+            }
+            emailContent.append(line).append("\n");
+        }
+
+        String emailString = emailContent.toString().trim(); // Loại bỏ khoảng trắng thừa
+
+        // Kiểm tra email rỗng
+        if (emailString.isEmpty()) {
+            System.out.println("Email content is empty for ID: " + emailId);
+            return null;
+        }
+
+        try {
+            // Phân tích email
+            return new Mail(emailString);
+        } catch (Exception e) {
+            System.err.println("Failed to parse email content for ID: " + emailId);
+            e.printStackTrace();
+            return null;
+        }
     }
- 
+
+
     public boolean sendEmailWithAttachment(String from, String to, String subject, String body, String attachmentPath) throws IOException {
         // Tạo boundary cho MIME
         String boundary = "----=_Part_" + System.currentTimeMillis();

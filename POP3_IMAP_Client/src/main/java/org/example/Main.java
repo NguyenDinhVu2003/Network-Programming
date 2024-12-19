@@ -1,7 +1,10 @@
 package org.example;
 
 import java.io.Console;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Scanner;
 
 public class Main {
@@ -36,12 +39,13 @@ public class Main {
             printSuccess("Successfully logged in!");
 
             int command = -1;
-            while (command != 4) {
+            while (command != 5) {
                 System.out.println("--- COMMANDS ---");
                 System.out.println("1. View Inbox");
                 System.out.println("2. Retrieve a specific mail by ID");
                 System.out.println("3. Send a mail");
-                System.out.println("4. Logout");
+                System.out.println("4. Dowload attachement from a mail");
+                System.out.println("5. Logout");
 
                 command = scanner.nextInt();
                 scanner.nextLine(); // consume new line
@@ -90,6 +94,49 @@ public class Main {
                         }
                         break;
                     case 4:
+                        System.out.print("Enter email id to download attachments: ");
+                        int attachmentEmailId = scanner.nextInt();
+                        scanner.nextLine(); // consume newline
+
+                        Mail emailWithAttachments = pop3MailClient.fetchEmail(attachmentEmailId);
+                        if (emailWithAttachments == null) {
+                            printError("Email with id does not exist");
+                        } else {
+                            Map<String, String> attachments = emailWithAttachments.getAttachments();
+                            if (attachments.isEmpty()) {
+                                printError("No attachments found in this email.");
+                            } else {
+                                // Use recipient's email (your email) as folder name
+                                String emailFolder = emailWithAttachments.getTo(); // Use recipient's email
+                                if (emailFolder == null || emailFolder.isEmpty()) {
+                                    printError("Recipient email is missing. Cannot create folder.");
+                                    break;
+                                }
+
+                                // Replace invalid characters in folder name
+                                emailFolder = emailFolder.replaceAll("[^a-zA-Z0-9@.-]", "_");
+                                File folder = new File("downloads/" + emailFolder);
+                                folder.mkdirs(); // Create the folder if it doesn't exist
+
+                                for (Map.Entry<String, String> entry : attachments.entrySet()) {
+                                    String fileName = entry.getKey(); // Use the original filename
+                                    if (fileName == null || fileName.isEmpty() || fileName.equalsIgnoreCase("Attachment")) {
+                                        continue; // Skip invalid attachment names like "Attachment"
+                                    }
+                                    String fileContent = entry.getValue();
+
+                                    File outputFile = new File(folder, fileName); // Save to folder
+                                    try (FileOutputStream fos = new FileOutputStream(outputFile)) {
+                                        fos.write(fileContent.getBytes());
+                                        printSuccess("Attachment downloaded: " + outputFile.getPath());
+                                    } catch (IOException e) {
+                                        printError("Failed to save attachment: " + fileName);
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                    case 5:
                         loggedIn = false;
                         pop3MailClient.logout();
                         break;
