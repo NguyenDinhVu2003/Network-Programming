@@ -3,6 +3,7 @@ package org.example;
 import java.io.*;
 import java.net.*;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Base64;
 
 public class MailClient {
@@ -176,7 +177,7 @@ public class MailClient {
     }
 
 
-    public boolean sendEmailWithAttachment(String from, String to, String subject, String body, String attachmentPath) throws IOException {
+    public boolean sendEmailWithAttachment(String from, String to, String subject, String body, ArrayList<String> attachmentPaths) throws IOException {
         // Tạo boundary cho MIME
         String boundary = "----=_Part_" + System.currentTimeMillis();
 
@@ -214,32 +215,33 @@ public class MailClient {
         writer.write("\r\n");
 
         // If there's an attachment, handle it
-        if (attachmentPath != null && !attachmentPath.isEmpty()) {
-            File attachment = new File(attachmentPath);
-            if (attachment.exists()) {
-                byte[] fileBytes = Files.readAllBytes(attachment.toPath());
-                String encodedFile = Base64.getEncoder().encodeToString(fileBytes);
-
-                // Add attachment part
-                writer.write("--" + boundary + "\r\n");
-                writer.write("Content-Type: application/octet-stream; name=\"" + attachment.getName() + "\"\r\n");
-                writer.write("Content-Transfer-Encoding: base64\r\n");
-                writer.write("Content-Disposition: attachment; filename=\"" + attachment.getName() + "\"\r\n");
-                writer.write("\r\n");
-                
-                // Write Base64 encoded file content
-                int chunkSize = 76; // SMTP requires chunks of 76 characters
-                
-                for (int i = 0; i < encodedFile.length(); i += chunkSize) {
-                    writer.write(encodedFile, i, Math.min(i + chunkSize, encodedFile.length()));
+        if (attachmentPaths != null && !attachmentPaths.isEmpty()) {
+            for (String attachmentPath : attachmentPaths) {
+                File attachment = new File(attachmentPath);
+                if (attachment.exists()) {
+                    byte[] fileBytes = Files.readAllBytes(attachment.toPath());
+                    String encodedFile = Base64.getEncoder().encodeToString(fileBytes);
+    
+                    // Add attachment part
+                    writer.write("--" + boundary + "\r\n");
+                    writer.write("Content-Type: application/octet-stream; name=\"" + attachment.getName() + "\"\r\n");
+                    writer.write("Content-Transfer-Encoding: base64\r\n");
+                    writer.write("Content-Disposition: attachment; filename=\"" + attachment.getName() + "\"\r\n");
                     writer.write("\r\n");
+    
+                    // Write Base64 encoded file content
+                    int chunkSize = 76; // SMTP requires chunks of 76 characters
+    
+                    for (int i = 0; i < encodedFile.length(); i += chunkSize) {
+                        writer.write(encodedFile, i, Math.min(i + chunkSize, encodedFile.length()));
+                        writer.write("\r\n");
+                    }
+                    writer.write("\r\n");
+                } else {
+                    throw new IOException("Attachment file not found: " + attachmentPath);
                 }
-                writer.write("\r\n");
-            } else {
-                throw new IOException("Attachment file not found: " + attachmentPath);
             }
         }
-        
         // End the email content
         writer.write("--" + boundary + "--\r\n");
         writer.write(".\r\n");

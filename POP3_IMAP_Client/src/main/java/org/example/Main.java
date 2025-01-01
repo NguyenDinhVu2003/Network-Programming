@@ -4,6 +4,8 @@ import java.io.Console;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -81,12 +83,15 @@ public class Main {
                         String body = scanner.nextLine();
                         System.out.print("Do you want to add an attachement (y/n): ");
                         String att = scanner.nextLine();
-                        String path = "";
-                        if (att.equals("y")) {
+                        ArrayList<String> attachmentPaths = new ArrayList<>();
+                        while (att.equals("y")) {
                             System.out.print("Enter the path of the file: ");
-                            path = scanner.nextLine();
+                            String path = scanner.nextLine();
+                            attachmentPaths.add(path);
+                            System.out.print("Do you want to add another attachement (y/n): ");
+                            att = scanner.nextLine();
                         }
-                        boolean success = smtpMailClient.sendEmailWithAttachment(userMail, destination, subject, body, path);
+                        boolean success = smtpMailClient.sendEmailWithAttachment(userMail, destination, subject, body, attachmentPaths);
                         if (success) {
                             printSuccess("Email sent successfully");
                         } else {
